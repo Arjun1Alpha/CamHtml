@@ -9,14 +9,25 @@
     <video id="cameraFeed" width="640" height="480" autoplay></video>
 
     <script>
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then((stream) => {
-                const videoElement = document.getElementById('cameraFeed');
-                videoElement.srcObject = stream;
-            })
-            .catch((error) => {
-                console.error('Error accessing camera:', error);
-            });
+        navigator.mediaDevices.enumerateDevices()
+    .then(devices => {
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        if (videoDevices.length > 0) {
+            const deviceId = videoDevices[0].deviceId; // Change this to the desired deviceId
+            navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } })
+                .then(stream => {
+                    const videoElement = document.getElementById('cameraFeed');
+                    videoElement.srcObject = stream;
+                })
+                .catch(error => {
+                    console.error('Error accessing camera:', error);
+                });
+        }
+    })
+    .catch(error => {
+        console.error('Error enumerating devices:', error);
+    });
+
     </script>
 </body>
 </html>
