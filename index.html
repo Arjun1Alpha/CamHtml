@@ -263,44 +263,67 @@
       link.click();
     });
   });
-
 shareBtn.addEventListener('click', async () => {
-  let canShareFiles = false;
-  try {
-    canShareFiles = navigator.canShare;
-  } catch (e) {
-    canShareFiles = false;
-  }
-
-  if (canShareFiles) {
     try {
+      // Generate the image using html2canvas
       const canvas = await html2canvas(container);
-      canvas.toBlob(async (blob) => {
-        const file = new File([blob], 'card.png', { type: 'image/png' });
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      const file = new File([blob], 'personality_card.png', { type: 'image/png' });
+
+      // Check if Web Share API is supported
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Try to share directly to Instagram
         await navigator.share({
           files: [file],
           title: 'My Personality Card',
-          text: 'Check out my personality result!',
+          text: 'Check out my personality result!'
         });
-      });
-    } catch (err) {
-      alert('Sharing failed: ' + err.message);
-    }
-  } else if (navigator.share) {
-    // Fallback: share just text (no files)
-    try {
-      await navigator.share({
-        title: 'My Personality Card',
-        text: 'Check out my personality result! (Image sharing not supported on this device)',
-      });
-    } catch (err) {
-      alert('Sharing failed: ' + err.message);
-    }
-  } else {
-    alert('Sharing is not supported on this browser.');
-  }
-});
+      } else {
+        // Fallback: Check if Instagram app is available (iOS-specific URL scheme)
+        const instagramURL = 'instagram://app';
+        const isInstagramAvailable = await new Promise(resolve => {
+          const testLink = document.createElement('a');
+          testLink.href = instagramURL;
+          testLink.addEventListener('click', () => resolve(true));
+          testLink.addEventListener('error', () => resolve(false));
+          document.body.appendChild(testLink);
+          testLink.click();
+          document.body.removeChild(testLink);
+          setTimeout(() => resolve(false), 500); // Timeout if no response
+        });
 
+        if (isInstagramAvailable) {
+          // Attempt to open Instagram with the image (iOS-specific)
+          const pasteboardItems = { 'com.instagram.sharedSticker.backgroundImage': blob };
+          navigator.clipboard.writeData('text/plain', JSON.stringify(pasteboardItems)).then(() => {
+            window.location.href = 'instagram://share?source_application=your_app_id';
+          }).catch(() => {
+            // Fallback to download if clipboard fails
+            const link = document.createElement('a');
+            link.download = 'personality_card.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            alert('Please open Instagram and share the downloaded image manually.');
+          });
+        } else {
+          // Fallback: Download the image and prompt manual sharing
+          const link = document.createElement('a');
+          link.download = 'personality_card.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          alert('Instagram app not detected. Please download the image and share it manually on Instagram.');
+        }
+      }
+    } catch (err) {
+      // Handle any errors
+      alert('Sharing failed: ' + err.message);
+      const link = document.createElement('a');
+      link.download = 'personality_card.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      alert('Please open Instagram and share the downloaded image manually.');
+    }
+  });
 
 </script>
 
