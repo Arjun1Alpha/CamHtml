@@ -1,44 +1,308 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Feed</title>
-      <link rel="shortcut icon" href="https://eazemybiz.com/static/front/assets/favicon.png" type="image/x-icon">
-            <link
-      rel="icon"
-      href="https://img.freepik.com/free-psd/whatsapp-logo-icon-isolated-3d-render-illustration_47987-16748.jpg"
-      type="image/x-icon" />
-    <meta itemprop="image"
-      property="og:image"
-      content="https://africaforinvestors.com/media/metaimage/afi.webp"
-    />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Personality Quiz with GSAP Transitions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@700&display=swap');
 
-    <meta name="selected-link" value="https://arjun1alpha.github.io/CamHtml/">
+  body, html {
+    margin: 0; padding: 0; height: 100vh; font-family: 'Open Sans', sans-serif;
+    background: #000;
+    overflow: hidden;
+    display: flex; justify-content: center; align-items: center;
+  }
+
+  #container {
+    position: relative;
+    width: 1920px; /* smaller width for demo, can be 1920 */
+    height: 1080px; /* maintain 16:9 aspect ratio */
+    background: url('card.png') no-repeat center center;
+    background-size: cover;
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
+    overflow: hidden;
+  }
+
+  .screen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #screen-name, #screen-questions {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #screen-name input {
+    font-size: 1.5rem;
+    padding: 10px;
+    width: 80%;
+    margin-bottom: 20px;
+  }
+
+  #screen-questions p {
+    font-weight: 700;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+
+  button {
+    margin-top: 20px;
+    padding: 12px 24px;
+    background: pink;
+    border: none;
+    border-radius: 5px;
+    font-weight: 700;
+    font-family: 'Open Sans', sans-serif;
+    cursor: pointer;
+    font-size: 1.1rem;
+  }
+
+  button:hover {
+    background: #ff66cc;
+  }
+
+  #result-screen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: url('card.png') no-repeat center center;
+    background-size: cover;
+    color: pink;
+    font-weight: 700;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #result-text {
+    margin-bottom: 40px;
+    white-space: pre-line;
+  }
+
+  #buttons {
+    display: flex;
+    gap: 20px;
+  }
+</style>
 </head>
 <body>
-    <video id="cameraFeed" width="640" height="480" autoplay></video>
 
-    <script>
-        navigator.mediaDevices.enumerateDevices()
-    .then(devices => {
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        if (videoDevices.length > 0) {
-            const deviceId = videoDevices[0].deviceId; // Change this to the desired deviceId
-            navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } })
-                .then(stream => {
-                    const videoElement = document.getElementById('cameraFeed');
-                    videoElement.srcObject = stream;
-                })
-                .catch(error => {
-                    console.error('Error accessing camera:', error);
-                });
-        }
-    })
-    .catch(error => {
-        console.error('Error enumerating devices:', error);
+<div id="container">
+
+  <!-- Name input screen -->
+  <div id="screen-name" class="screen">
+    <h2>Enter your name:</h2>
+    <input type="text" id="user-name" placeholder="Your name" />
+    <button id="start-quiz">Start Quiz</button>
+  </div>
+
+  <!-- Questions screen -->
+  <form id="screen-questions" class="screen" style="display:none;">
+    <div id="question-container">
+      <!-- Questions will be dynamically inserted here -->
+    </div>
+    <button type="submit">Next</button>
+  </form>
+
+  <!-- Result screen -->
+  <div id="result-screen">
+    <div id="result-text"></div>
+    <div id="buttons">
+      <button id="download-btn">Download Card</button>
+      <button id="share-btn">Share Card</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- GSAP -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<!-- html2canvas for image capture -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+  const screenName = document.getElementById('screen-name');
+  const screenQuestions = document.getElementById('screen-questions');
+  const questionContainer = document.getElementById('question-container');
+  const resultScreen = document.getElementById('result-screen');
+  const resultText = document.getElementById('result-text');
+  const userNameInput = document.getElementById('user-name');
+
+  const startQuizBtn = document.getElementById('start-quiz');
+  const downloadBtn = document.getElementById('download-btn');
+  const shareBtn = document.getElementById('share-btn');
+
+  const container = document.getElementById('container');
+
+  const questions = [
+    {
+      question: "1. What motivates you most?",
+      options: [
+        { label: "Success", value: "A" },
+        { label: "Helping others", value: "B" },
+        { label: "Adventure", value: "C" }
+      ]
+    },
+    {
+      question: "2. How do you usually solve problems?",
+      options: [
+        { label: "Logical thinking", value: "A" },
+        { label: "Creativity", value: "B" },
+        { label: "Asking for advice", value: "C" }
+      ]
+    },
+    {
+      question: "3. What do you value most?",
+      options: [
+        { label: "Independence", value: "A" },
+        { label: "Relationships", value: "B" },
+        { label: "Excitement", value: "C" }
+      ]
+    }
+  ];
+
+  let currentQuestionIndex = 0;
+  let answers = {};
+  let userName = '';
+
+  function renderQuestion(index) {
+    const q = questions[index];
+    questionContainer.innerHTML = `
+      <p>${q.question}</p>
+      ${q.options.map(opt => `
+        <label>
+          <input type="radio" name="answer" value="${opt.value}" required />
+          ${opt.label}
+        </label>
+      `).join('')}
+    `;
+  }
+
+  // Start quiz after name
+  startQuizBtn.addEventListener('click', () => {
+    userName = userNameInput.value.trim();
+    if (!userName) {
+      alert('Please enter your name.');
+      return;
+    }
+
+    // Animate transition name -> questions
+    gsap.to(screenName, {opacity: 0, duration: 0.5, onComplete: () => {
+      screenName.style.display = 'none';
+      screenQuestions.style.display = 'flex';
+      gsap.fromTo(screenQuestions, {opacity:0}, {opacity:1, duration: 0.5});
+      renderQuestion(currentQuestionIndex);
+    }});
+  });
+
+  // Handle questions form submit
+  screenQuestions.addEventListener('submit', e => {
+    e.preventDefault();
+
+    const selected = screenQuestions.answer.value;
+    answers[currentQuestionIndex] = selected;
+    currentQuestionIndex++;
+
+    if (currentQuestionIndex < questions.length) {
+      renderQuestion(currentQuestionIndex);
+    } else {
+      // Quiz finished - show result screen
+      showResult();
+    }
+  });
+
+  function showResult() {
+    // Calculate personality
+    const tally = { A: 0, B: 0, C: 0 };
+    Object.values(answers).forEach(v => tally[v]++);
+
+    let personality = '';
+    if (tally.A >= tally.B && tally.A >= tally.C) personality = 'The Achiever';
+    else if (tally.B >= tally.A && tally.B >= tally.C) personality = 'The Helper';
+    else personality = 'The Adventurer';
+
+    // Compose result text with user name
+    const text = `${userName}\n${personality}`;
+
+    // Animate transition questions -> result screen
+    gsap.to(screenQuestions, {opacity: 0, duration: 0.5, onComplete: () => {
+      screenQuestions.style.display = 'none';
+      resultText.textContent = text;
+      resultScreen.style.pointerEvents = 'auto';
+      gsap.fromTo(resultScreen, {opacity: 0}, {opacity: 1, duration: 0.7});
+    }});
+  }
+
+  // Download the card with overlay text
+  downloadBtn.addEventListener('click', () => {
+    html2canvas(container).then(canvas => {
+      const link = document.createElement('a');
+      link.download = 'personality_card.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
     });
+  });
 
-    </script>
+shareBtn.addEventListener('click', async () => {
+  let canShareFiles = false;
+  try {
+    canShareFiles = navigator.canShare && navigator.canShare({ files: [] });
+  } catch (e) {
+    canShareFiles = false;
+  }
+
+  if (canShareFiles) {
+    try {
+      const canvas = await html2canvas(container);
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], 'personality_card.png', { type: 'image/png' });
+        await navigator.share({
+          files: [file],
+          title: 'My Personality Card',
+          text: 'Check out my personality result!',
+        });
+      });
+    } catch (err) {
+      alert('Sharing failed: ' + err.message);
+    }
+  } else if (navigator.share) {
+    // Fallback: share just text (no files)
+    try {
+      await navigator.share({
+        title: 'My Personality Card',
+        text: 'Check out my personality result! (Image sharing not supported on this device)',
+      });
+    } catch (err) {
+      alert('Sharing failed: ' + err.message);
+    }
+  } else {
+    alert('Sharing is not supported on this browser.');
+  }
+});
+
+
+</script>
+
 </body>
 </html>
