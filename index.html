@@ -267,7 +267,7 @@
 shareBtn.addEventListener('click', async () => {
   let canShareFiles = false;
   try {
-    canShareFiles = navigator.canShare && navigator.canShare({ files: [] });
+    canShareFiles = navigator.canShare;
   } catch (e) {
     canShareFiles = false;
   }
@@ -276,7 +276,7 @@ shareBtn.addEventListener('click', async () => {
     try {
       const canvas = await html2canvas(container);
       canvas.toBlob(async (blob) => {
-        const file = new File([blob], 'personality_card.png', { type: 'image/png' });
+        const file = new File([blob], 'card.png', { type: 'image/png' });
         await navigator.share({
           files: [file],
           title: 'My Personality Card',
